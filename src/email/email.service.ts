@@ -16,13 +16,24 @@ export class EmailService {
     //     this.resend = new Resend(apiKey);
     // }
     constructor(private readonly configService: ConfigService) {
+        const host = this.configService.get<string>('SMTP_HOST');
+        const port = Number(this.configService.get<string>('SMTP_PORT'));
+        const user = this.configService.get<string>('SMTP_USER');
+        const pass = this.configService.get<string>('SMTP_PASS');
+
+        if (!host || !port || !user || !pass) {
+            throw new Error(
+                'Missing SMTP configuration. Required env vars: SMTP_HOST, SMTP_PORT, SMTP_USER, SMTP_PASS',
+            );
+        }
+
         this.transporter = nodemailer.createTransport({
-            host: this.configService.get<string>('SMTP_HOST'),
-            port: Number(this.configService.get<string>('SMTP_PORT')),
-            secure: false, // Use STARTTLS on port 587
+            host,
+            port,
+            secure: port === 465,
             auth: {
-                user: this.configService.get<string>('SMTP_USER'),
-                pass: this.configService.get<string>('SMTP_PASS'),
+                user,
+                pass,
             },
         });
     }
@@ -61,9 +72,16 @@ export class EmailService {
         //     return response;
         // } catch (error) {
         try {
+            const from = this.configService.get<string>('MAIL_FROM');
+            const to = this.configService.get<string>('MAIL_TO');
+
+            if (!from || !to) {
+                throw new Error('Missing mail routing configuration. Required env vars: MAIL_FROM, MAIL_TO');
+            }
+
             const info = await this.transporter.sendMail({
-                from: this.configService.get<string>('MAIL_FROM'),
-                to: this.configService.get<string>('MAIL_TO'),
+                from,
+                to,
                 replyTo: data.email,
                 subject: `Portfolio Contact: ${data.subject}`,
                 html: `
